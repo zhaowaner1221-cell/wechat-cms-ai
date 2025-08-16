@@ -459,15 +459,17 @@ export default function HotListPage() {
   }
 
   return (
-    <MainLayout 
-      title="热榜管理" 
+    <MainLayout
+      title="热榜管理"
       breadcrumbs={[{ name: "首页", href: "/dashboard" }, { name: "热榜管理" }]}
     >
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Database className="h-5 w-5 text-green-500" />
-            <span className="text-sm text-muted-foreground">数据库已连接 - 实时保存采集数据并自动去重</span>
+            <span className="text-sm text-muted-foreground">
+              数据库已连接 - 实时保存采集数据并自动去重
+            </span>
           </div>
           <Button size="sm" variant="outline" onClick={loadDataFromSupabase}>
             <RefreshCw className="mr-2 h-4 w-4" />
