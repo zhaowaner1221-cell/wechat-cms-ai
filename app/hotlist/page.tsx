@@ -301,6 +301,10 @@ export default function HotListPage() {
     }
   }
 
+  const handleManualFetch = (source: DataSource) => {
+    fetchSingleHotList(source.hashId)
+  }
+
   const handleBatchRefresh = async () => {
     setIsRefreshing(true)
     console.log("[v0] 开始批量刷新所有热榜数据")
@@ -399,7 +403,7 @@ export default function HotListPage() {
     try {
       console.log("[v0] 添加到素材库:", item.title)
 
-      // 获取当前用户ID（这里需要根据实际情况获取用户ID）
+      // 获取当前用户ID
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         toast({
@@ -455,7 +459,10 @@ export default function HotListPage() {
   }
 
   return (
-    <MainLayout title="热榜管理" breadcrumbs={[{ name: "首页", href: "/dashboard" }, { name: "热榜管理" }]}>
+    <MainLayout 
+      title="热榜管理" 
+      breadcrumbs={[{ name: "首页", href: "/dashboard" }, { name: "热榜管理" }]}
+    >
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -490,22 +497,16 @@ export default function HotListPage() {
                 {source.error && <p className="text-xs text-red-500 mt-1">{source.error}</p>}
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="mt-2 w-full bg-transparent"
-                  onClick={() => fetchSingleHotList(source.hashId)}
+                  className="w-full mt-2"
+                  onClick={() => handleManualFetch(source)}
                   disabled={source.status === "loading"}
                 >
                   {source.status === "loading" ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      采集中
-                    </>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      手动刷新
-                    </>
+                    <RefreshCw className="mr-2 h-4 w-4" />
                   )}
+                  {source.status === "loading" ? "采集中..." : "手动刷新"}
                 </Button>
               </CardContent>
             </Card>
@@ -513,236 +514,174 @@ export default function HotListPage() {
         </div>
 
         <div className="space-y-4">
-          {/* 搜索栏 */}
-          <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 py-4 border-b">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold tracking-tight">热榜实时监控</h2>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  实时数据 {hotListItems.length} 条
-                </Badge>
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <SearchBar
-                onSearch={handleSearch}
-                onClear={handleClearSearch}
+          <SearchBar
+            onSearch={handleSearch}
+            onClear={handleClearSearch}
+            results={searchResults}
+            isSearching={isSearching}
+            totalItems={hotListItems.length}
+          />
+
+          {/* 搜索结果区域 */}
+          {showSearchResults && (
+            <div className="mb-6">
+              <SearchResults
                 results={searchResults}
                 isSearching={isSearching}
-                totalItems={hotListItems.length}
+                query={searchQuery}
+                onAddToLibrary={handleAddToLibrary}
+                onPreview={(url) => window.open(url, "_blank")}
               />
             </div>
+          )}
+        </div>
 
-            {/* 搜索结果区域 */}
-            {showSearchResults && (
-              <div className="mb-6">
-                <SearchResults
-                  results={searchResults}
-                  isSearching={isSearching}
-                  query={searchQuery}
-                  onAddToLibrary={handleAddToLibrary}
-                  onPreview={(url) => window.open(url, "_blank")}
-                />
-              </div>
-            )}
-          </div>
-
-          <Tabs defaultValue="content" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="content">{showSearchResults ? '搜索结果' : '热榜内容'}</TabsTrigger>
-              <TabsTrigger value="settings">采集设置</TabsTrigger>
-              <TabsTrigger value="history">采集历史</TabsTrigger>
-            </TabsList>
+        <Tabs defaultValue="content" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="content">{showSearchResults ? '搜索结果' : '热榜内容'}</TabsTrigger>
+            <TabsTrigger value="settings">采集设置</TabsTrigger>
+            <TabsTrigger value="history">采集历史</TabsTrigger>
+          </TabsList>
 
           <TabsContent value="content" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>热榜内容列表</CardTitle>
-                    <CardDescription>实时采集的热门内容 ({filteredItems.length} 条)</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">全部分类</SelectItem>
-                        <SelectItem value="科技">科技</SelectItem>
-                        <SelectItem value="生活">生活</SelectItem>
-                        <SelectItem value="职场">职场</SelectItem>
-                        <SelectItem value="财经">财经</SelectItem>
-                        <SelectItem value="创投">创投</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button size="sm" onClick={handleBatchRefresh} disabled={isRefreshing}>
-                      {isRefreshing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          刷新中
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          批量刷新
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {filteredItems.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <TrendingUp className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                    <p>暂无热榜数据</p>
-                    <p className="text-sm">点击上方的"手动刷新"或"批量刷新"获取最新数据</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredItems.map((item) => (
-                      <div key={`${item.listHashId}_${item.itemId}`} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium text-lg leading-tight">{item.title}</h3>
-                              <Badge variant="outline">{item.category}</Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{item.summary}</p>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <TrendingUp className="h-3 w-3" />
-                                热度: {item.popularityScore.toLocaleString()}
-                              </span>
-                              <span>作者: {item.author}</span>
-                              <span>阅读: {item.readCount}</span>
-                              <span>{new Date(item.publishTime).toLocaleString("zh-CN")}</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2 ml-4">
-                            <Button size="sm" variant="outline" onClick={() => window.open(item.url, "_blank")}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              预览
-                            </Button>
-                            <Button size="sm" onClick={() => handleAddToLibrary(item)}>
-                              <Plus className="mr-2 h-4 w-4" />
-                              添加到素材库
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+            {showSearchResults ? (
+              <div className="space-y-4">
+                {searchResults.length === 0 && !isSearching && (
+                  <div className="text-center py-8">
+                    <h3 className="text-lg font-medium mb-2">无搜索结果</h3>
+                    <p className="text-muted-foreground">尝试其他关键词或调整筛选条件</p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>热榜内容</CardTitle>
+                  <CardDescription>
+                    来自各大平台的热门内容，支持实时更新和智能去重
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部分类</SelectItem>
+                          <SelectItem value="科技">科技</SelectItem>
+                          <SelectItem value="生活">生活</SelectItem>
+                          <SelectItem value="职场">职场</SelectItem>
+                          <SelectItem value="财经">财经</SelectItem>
+                          <SelectItem value="创投">创投</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={handleBatchRefresh} disabled={isRefreshing}>
+                        {isRefreshing ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                        )}
+                        批量刷新
+                      </Button>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      共 {filteredItems.length} 条内容
+                    </Badge>
+                  </div>
+
+                  {filteredItems.length === 0 ? (
+                    <div className="text-center py-8">
+                      <TrendingUp className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                      <h3 className="text-lg font-medium mb-2">暂无热榜数据</h3>
+                      <p className="text-muted-foreground">点击上方的"批量刷新"获取最新数据</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredItems.map((item) => (
+                        <Card key={`${item.listHashId}_${item.itemId}`}>
+                          <CardContent className="pt-6">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-medium text-lg">{item.title}</h3>
+                                  <Badge variant="outline">{item.category}</Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{item.summary}</p>
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <TrendingUp className="h-3 w-3" />
+                                    热度: {item.popularityScore.toLocaleString()}
+                                  </span>
+                                  <span>作者: {item.author}</span>
+                                  <span>阅读: {item.readCount}</span>
+                                  <span>{new Date(item.publishTime).toLocaleString("zh-CN")}</span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-2 ml-4">
+                                <Button size="sm" variant="outline" onClick={() => window.open(item.url, "_blank")}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  预览
+                                </Button>
+                                <Button size="sm" onClick={() => handleAddToLibrary(item)}>
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  添加到素材库
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>数据源配置</CardTitle>
-                  <CardDescription>管理热榜数据来源</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {dataSources.map((source) => (
-                    <div key={source.hashId} className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium">{source.name}</Label>
-                        <p className="text-xs text-muted-foreground">
-                          当前状态:{" "}
-                          {source.status === "active" ? "运行中" : source.status === "loading" ? "采集中" : "已停止"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Hash ID: {source.hashId}</p>
-                      </div>
-                      <Switch defaultChecked={source.status === "active"} />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>采集设置</CardTitle>
+                <CardDescription>配置热榜内容的采集参数</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="keywords">关键词过滤</Label>
+                  <Input id="keywords" placeholder="输入过滤关键词，用逗号分隔" />
+                  <p className="text-xs text-muted-foreground">包含这些关键词的内容将被过滤</p>
+                </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>采集参数</CardTitle>
-                  <CardDescription>设置采集规则和阈值</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="threshold">热度阈值</Label>
-                    <Input id="threshold" placeholder="5000" />
-                    <p className="text-xs text-muted-foreground">只采集热度值大于此阈值的内容</p>
-                  </div>
+                <div className="flex items-center space-x-2">
+                  <Switch id="auto-collect" />
+                  <Label htmlFor="auto-collect">启用定时采集</Label>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="interval">采集间隔</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择采集间隔" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5分钟</SelectItem>
-                        <SelectItem value="10">10分钟</SelectItem>
-                        <SelectItem value="30">30分钟</SelectItem>
-                        <SelectItem value="60">1小时</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="keywords">关键词过滤</Label>
-                    <Input id="keywords" placeholder="输入过滤关键词，用逗号分隔" />
-                    <p className="text-xs text-muted-foreground">包含这些关键词的内容将被过滤</p>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Switch id="auto-collect" />
-                    <Label htmlFor="auto-collect">启用定时采集</Label>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="api-key">TopHub API Key</Label>
-                    <Input
-                      id="api-key"
-                      type="password"
-                      placeholder="请输入 TopHub API Key"
-                      defaultValue={process.env.NEXT_PUBLIC_TOPHUB_API_KEY || ""}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      从{" "}
-                      <a
-                        href="https://www.tophubdata.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline"
-                      >
-                        TopHub
-                      </a>{" "}
-                      获取 API Key
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="api-key">TopHub API Key</Label>
+                  <Input
+                    id="api-key"
+                    type="password"
+                    placeholder="输入TopHub API密钥"
+                  />
+                  <p className="text-xs text-muted-foreground">用于访问热榜数据源</p>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>采集历史</CardTitle>
-                <CardDescription>查看采集任务执行记录 ({collectionLogs.length} 条)</CardDescription>
+                <CardDescription>查看历史采集记录和状态</CardDescription>
               </CardHeader>
               <CardContent>
                 {collectionLogs.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Clock className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                    <p>暂无采集记录</p>
-                    <p className="text-sm">执行采集任务后将显示历史记录</p>
-                  </div>
+                  <p className="text-center text-muted-foreground py-8">暂无采集记录</p>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     {collectionLogs.map((record) => (
                       <div key={record.id} className="flex items-center justify-between border-b pb-2">
                         <div className="flex items-center gap-4">
