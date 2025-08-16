@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TrendingUp, Plus, Eye, RefreshCw, Clock, Loader2, AlertCircle, Database } from "lucide-react"
 import { SearchBar } from "@/components/hotlist/search-bar"
 import { SearchResults } from "@/components/hotlist/search-results"
+import { ManualUrlInput } from "@/components/hotlist/manual-url-input"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase/client"
 
@@ -458,6 +459,11 @@ export default function HotListPage() {
     }
   }
 
+  const handleManualUrlAdded = () => {
+    // 手动添加URL成功后重新加载数据
+    loadDataFromSupabase()
+  }
+
   return (
     <MainLayout
       title="热榜管理"
@@ -541,6 +547,7 @@ export default function HotListPage() {
         <Tabs defaultValue="content" className="space-y-4">
           <TabsList>
             <TabsTrigger value="content">{showSearchResults ? '搜索结果' : '热榜内容'}</TabsTrigger>
+            <TabsTrigger value="manual">人工添加</TabsTrigger>
             <TabsTrigger value="settings">采集设置</TabsTrigger>
             <TabsTrigger value="history">采集历史</TabsTrigger>
           </TabsList>
@@ -640,6 +647,45 @@ export default function HotListPage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="manual" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>人工添加链接</CardTitle>
+                <CardDescription>
+                  手动输入文章链接，系统将自动解析内容并添加到素材库
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-6">
+                  <ManualUrlInput onSuccess={handleManualUrlAdded} />
+                  
+                  <div className="border-t pt-6">
+                    <h3 className="text-sm font-medium mb-4">支持的链接类型</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                      <div>
+                        <h4 className="font-medium mb-2">微信公众号</h4>
+                        <ul className="space-y-1">
+                          <li>• 公众号文章</li>
+                          <li>• 视频号内容</li>
+                          <li>• 小程序文章</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-2">其他平台</h4>
+                        <ul className="space-y-1">
+                          <li>• 知乎文章</li>
+                          <li>• 头条号文章</li>
+                          <li>• 简书文章</li>
+                          <li>• 其他HTTP(S)链接</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4">
